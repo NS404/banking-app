@@ -22,17 +22,18 @@ public class BankingAppApplication {
     }
 
 
-    @Bean
-    CommandLineRunner run(UserService userService) {
-        return args -> {
-
-
-            userService.saveUser(new User("admin","password", Role.ADMIN));
-            userService.saveClient("client","password");
-            userService.saveTeller("teller","password");
-
-        };
-    }
+//    @Bean
+//    CommandLineRunner run(UserService userService) {
+//        return args -> {
+//
+//
+//            userService.saveUser(new User("admin","password", Role.ADMIN));
+//            userService.saveClient("client","password");
+//            userService.saveClient("client1 ","password");
+//            userService.saveTeller("teller", "password");
+//
+//        };
+//    }
 
 
 

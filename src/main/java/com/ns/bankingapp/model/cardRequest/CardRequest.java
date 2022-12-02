@@ -5,10 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,8 +16,9 @@ public abstract class CardRequest {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected long id;
-
     protected LocalDateTime time;
+
+    @Enumerated(EnumType.STRING)
     protected RequestStatus status;
 
     public CardRequest(LocalDateTime time){

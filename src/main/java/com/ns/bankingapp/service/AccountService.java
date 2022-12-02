@@ -62,7 +62,7 @@ public class AccountService {
     public Account createTechnicalAccount(User user, Currency currency, Double interest) {
         Account account = new Account(user, currency, interest, AccountType.TECHNICAL, generateIBAN());
         account = saveAccount(account);
-        log.info("Technical Account with IBAN: {} was succesfully created", account.getIBAN());
+        log.info("Technical Account with IBAN: {} was successfully created", account.getIBAN());
         return account;
     }
 
@@ -110,7 +110,7 @@ public class AccountService {
     }
 
 
-    public List<Account> getClientAccounts(Long clientId) throws UserNotFoundException, AccountNotFoundException {
+    public List<Account> getAccounts(Long clientId) throws UserNotFoundException, AccountNotFoundException {
         User user = userService.getUserById(clientId);
         Optional<List<Account>> optionalAccounts = accountRepo.findByClient(user);
         if (optionalAccounts.isPresent()){
@@ -122,5 +122,15 @@ public class AccountService {
 
     public List<Account> getAllAccounts() {
         return accountRepo.findAll();
+    }
+
+    public Account getAccount(Long accountId) throws AccountNotFoundException {
+        Optional<Account> optionalAccount = accountRepo.findById(accountId);
+        if(optionalAccount.isPresent()){
+            return optionalAccount.get();
+        }else {
+            throw new AccountNotFoundException("Account doesn't exist");
+        }
+
     }
 }

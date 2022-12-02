@@ -14,6 +14,6 @@ public interface CardRepo extends JpaRepository<Card, Long> {
 
     public Optional<Card> findCardByAccount(Account account);
 
-    @Query(value = "SELECT c From Card c JOIN c.account a JOIN a.client where a.client.id = :user")
+    @Query(value = "SELECT c From Card c JOIN c.account a JOIN a.client where a.client = :user")
     Optional<List<Card>> findByClient(@Param("user") User user);
 }

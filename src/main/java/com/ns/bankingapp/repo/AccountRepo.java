@@ -5,6 +5,7 @@ import com.ns.bankingapp.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -16,6 +17,7 @@ public interface AccountRepo extends JpaRepository<Account, Long> {
     Optional <List<Account>> findByClient(User user);
 
     @Query("Update Account a set a.balance = ?2 where a = ?1")
+    @Transactional
     @Modifying
     void updateBalance(Account fromAccount, BigDecimal newBalance);
 

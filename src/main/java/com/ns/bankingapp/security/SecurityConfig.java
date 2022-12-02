@@ -1,5 +1,6 @@
 package com.ns.bankingapp.security;
 
+import com.ns.bankingapp.model.Role;
 import com.ns.bankingapp.security.filter.CustomAuthenticationFilter;
 import com.ns.bankingapp.security.filter.CustomAuthorizationFilter;
 import lombok.RequiredArgsConstructor;
@@ -37,8 +38,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http.csrf().disable();
         http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
         http.authorizeHttpRequests().antMatchers("/api/login/**", "/api/token/refresh/**").permitAll();
-        http.authorizeHttpRequests().antMatchers("/api/user/teller/**").hasAuthority("ADMIN");
-        http.authorizeHttpRequests().antMatchers("/api/user/client/**").hasAuthority("TELLER");
+        http.authorizeHttpRequests().antMatchers("/api/transactions/{clientId}").hasAnyAuthority((Role.CLIENT.toString()), Role.TELLER.toString());
+        http.authorizeHttpRequests().antMatchers("/api/cards/{clientId}").hasAnyAuthority(Role.CLIENT.toString(), Role.TELLER.toString());
+        http.authorizeHttpRequests().antMatchers("/api/accounts/{clientId}").hasAnyAuthority(Role.CLIENT.toString(), Role.TELLER.toString());
+        http.authorizeHttpRequests().antMatchers("/api/user/teller/**").hasAuthority(Role.ADMIN.toString());
+        http.authorizeHttpRequests().antMatchers("/api/user/client/**").hasAuthority(Role.TELLER.toString());
+        http.authorizeHttpRequests().antMatchers("/api/request/**").hasAuthority(Role.CLIENT.toString());
+        http.authorizeHttpRequests().antMatchers("/api/approve/**").hasAuthority(Role.TELLER.toString());
+        http.authorizeHttpRequests().antMatchers("/api/disapprove/**").hasAuthority(Role.TELLER.toString());
+        http.authorizeHttpRequests().antMatchers("/api/transfer").hasAuthority(Role.CLIENT.toString());
+        http.authorizeHttpRequests().antMatchers("/api/transactions/**").hasAuthority(Role.TELLER.toString());
+        http.authorizeHttpRequests().antMatchers("/api/cards/**").hasAuthority(Role.TELLER.toString());
+        http.authorizeHttpRequests().antMatchers("/api/accounts/**").hasAuthority(Role.TELLER.toString());
+
+
         http.authorizeHttpRequests().anyRequest().authenticated();
         http.addFilter(customAuthenticationFilter);
         http.addFilterBefore(new CustomAuthorizationFilter(), UsernamePasswordAuthenticationFilter.class);

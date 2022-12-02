@@ -1,9 +1,9 @@
 package com.ns.bankingapp.service;
 
-import com.ns.bankingapp.model.Account;
-import com.ns.bankingapp.model.AccountType;
-import com.ns.bankingapp.model.Transaction;
-import com.ns.bankingapp.model.TransactionType;
+import com.ns.bankingapp.exception.AccountNotFoundException;
+import com.ns.bankingapp.exception.TransactionException;
+import com.ns.bankingapp.exception.TransactionNotFoundException;
+import com.ns.bankingapp.model.*;
 import com.ns.bankingapp.repo.AccountRepo;
 import com.ns.bankingapp.repo.TransactionRepo;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 
 @Service @Slf4j @RequiredArgsConstructor
 public class TransactionService {
@@ -20,77 +22,68 @@ public class TransactionService {
     private final AccountRepo accountRepo;
     private final TransactionRepo transactionRepo;
 
-    public Transaction makeTransaction(Account fromAccount, String IBAN, String value){
+    public TransactionDetails makeTransaction(Long accountId, String toIBAN, BigDecimal amount)
+            throws TransactionException, AccountNotFoundException {
 
-        Account toAccount = accountService.getAccount(IBAN);
+        Account fromAccount = accountService.getAccount(accountId);
+        Account toAccount = accountService.getAccount(toIBAN);
+
 
         if(fromAccount.getCurrency().equals(toAccount.getCurrency())) {
 
             if (accountService.hasCard(fromAccount) && accountService.hasCard(toAccount)) {
 
-                if (fromAccount.getAccountType().equals(AccountType.CURRENT)) {
+                if (fromAccount.getAccountType().equals(AccountType.TECHNICAL)) {
+                     return transfer(fromAccount, toAccount, amount);
 
-                    BigDecimal amount = new BigDecimal(value);
+                }else if(fromAccount.getAccountType().equals(AccountType.CURRENT)){
 
                     if (fromAccount.getBalance().compareTo(amount) >= 0) {
+                        return transfer(fromAccount, toAccount, amount);
 
-                        Transaction creditTransaction = new Transaction(toAccount, amount, fromAccount.getCurrency(), TransactionType.CREDIT);
-                        Transaction debitTransaction = new Transaction(fromAccount, amount, toAccount.getCurrency(), TransactionType.DEBIT);
-                        transfer(debitTransaction, creditTransaction);
-
-                        return debitTransaction;
-                    }
+                    }else throw new TransactionException("Transaction failed! Insufficient funds!");
                 }
+            }else throw new TransactionException("Transaction failed! Accounts must have cards");
 
-            }
-        }
-        // balance availability
+        }else throw new TransactionException("Transaction failed! Accounts have different currencies");
 
-        //each fromAccount must have a card
-
-        // interest calculation
-            return null;
+        return null;
     }
 
     @Transactional
-    public void transfer(Transaction debitTransaction, Transaction creditTransaction) {
+    public TransactionDetails transfer(Account fromAccount, Account toAccount, BigDecimal amount){
 
-        if(debitTransaction.getAccount().getAccountType().equals(AccountType.CURRENT)){
+        BigDecimal interestRate = BigDecimal.valueOf(fromAccount.getInterest());
+        BigDecimal interestValue = amount.multiply(interestRate);
+        BigDecimal remainedBalance = fromAccount.getBalance().subtract(amount.add(interestValue));
 
-            BigDecimal amount = debitTransaction.getAmount();
+        accountRepo.updateBalance(fromAccount, remainedBalance);
 
-            Account fromAccount = debitTransaction.getAccount();
-            BigDecimal remainedBalance = fromAccount.getBalance().subtract(amount);
-            accountRepo.updateBalance(fromAccount, remainedBalance);
+        Transaction debitTransaction = new Transaction(fromAccount, amount, fromAccount.getCurrency(), TransactionType.DEBIT);
+        transactionRepo.save(debitTransaction);
 
-            transactionRepo.save(debitTransaction);
+        log.info("Debit transaction from Account: {} was successfully saved",  fromAccount.getIBAN());
 
-            Account toAccount = creditTransaction.getAccount();
-            BigDecimal newBalance = toAccount.getBalance().add(amount);
-            accountRepo.updateBalance(toAccount, newBalance);
+        BigDecimal newBalance = toAccount.getBalance().add(amount);
+        accountRepo.updateBalance(toAccount, newBalance);
 
-            transactionRepo.save(creditTransaction);
+        Transaction creditTransaction = new Transaction(toAccount, amount, toAccount.getCurrency(), TransactionType.CREDIT);
+        transactionRepo.save(creditTransaction);
 
+        log.info("Credit transaction to Account: {} was successfully saved",  toAccount.getIBAN());
 
-        }else {
+        return new TransactionDetails(fromAccount.getIBAN(), toAccount.getIBAN(), amount, fromAccount.getCurrency());
+    }
 
-            Account fromAccount = debitTransaction.getAccount();
-            BigDecimal amount = debitTransaction.getAmount();
-            BigDecimal interestRate = BigDecimal.valueOf(debitTransaction.getAccount().getInterest());
-            BigDecimal interestValue = amount.multiply(interestRate);
-            BigDecimal remainedBalance = fromAccount.getBalance().subtract(amount.add(interestValue));
+    public List<Transaction> getTransactions(Long clientId) throws TransactionNotFoundException {
+        Optional<List<Transaction>> optionalTransactions = transactionRepo.findByClient(clientId);
 
-            accountRepo.updateBalance(fromAccount, remainedBalance);
+        if(optionalTransactions.isPresent()){
+            return optionalTransactions.get();
+        }else throw new TransactionNotFoundException("client doesnt have any transaction");
+    }
 
-            transactionRepo.save(debitTransaction);
-
-
-            Account toAccount = creditTransaction.getAccount();
-            BigDecimal newBalance = toAccount.getBalance().add(amount);
-            accountRepo.updateBalance(toAccount, newBalance);
-
-            transactionRepo.save(creditTransaction);
-
-        }
+    public List<Transaction> getAllTransactions() {
+       return transactionRepo.findAll();
     }
 }
